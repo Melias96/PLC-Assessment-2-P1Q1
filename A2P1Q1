@@ -1,0 +1,242 @@
+#include <stdio.h>
+#include <ctype.h>
+#include <stdbool.h>
+
+int charClass;char lexeme[100];char nextChar;int lexLen;int token;int nextToken;FILE *in_fp;
+int lookup(char ch);void addChar(void);void getChar(void);void getNonBlank(void);int lex(void);
+#define LETTER 0
+#define DIGIT 1
+#define UNKNOWN 99
+#define INT_LIT 10
+#define IDENT 11
+#define ASSIGN_OP 20
+#define ADD_OP 21
+#define SUB_OP 22
+#define MULT_OP 23
+#define DIV_OP 24
+#define LEFT_PAREN 25
+#define RIGHT_PAREN 26
+#define COMMA_OP 28
+#define IF_CODE 39
+#define ELSE_CODE 40
+
+int main(void) {
+ if ((in_fp = fopen("file.txt", "r")) == NULL)    printf("ERROR - cannot open front.in \n");
+  else {    getChar();
+    do {      lex();
+    } while (nextToken != EOF);  }
+  return 0;}
+int lookup(char ch) {  switch (ch) {    case '(':      addChar();
+      nextToken = LEFT_PAREN;
+      break;
+    case ')':      addChar();
+      nextToken = RIGHT_PAREN;
+      break;
+    case '+':      addChar();
+      nextToken = ADD_OP;
+      break;
+    case '-':      addChar();
+      nextToken = SUB_OP;
+      break;
+    case '*':      addChar();
+      nextToken = MULT_OP;
+      break;
+    case '/':      addChar();
+      nextToken = DIV_OP;
+      break;
+    default:      addChar();
+      nextToken = EOF;
+      break;  }
+  return nextToken;}
+/* addChar - a function to add nextChar to lexeme */
+void addChar(void) {  if (lexLen <= 98) {    lexeme[lexLen++] = nextChar;
+    lexeme[lexLen] = '\0';
+  }
+  else    printf("Error - lexeme is too long \n");
+}
+void getChar(void) {  if ((nextChar = getc(in_fp)) != EOF) {    if (isalpha(nextChar))      charClass = LETTER;
+    else if (isdigit(nextChar))      charClass = DIGIT;
+    else      charClass = UNKNOWN;
+  }
+  else    charClass = EOF;
+}
+
+void getNonBlank(void) {  while (isspace(nextChar))    getChar();
+}
+bool Delimiter(char ch){
+  if (ch == ' ' || ch == '+' || ch == '-' || ch == '*' ||
+      ch == '/' || ch == ',' || ch == ';' || ch == '>' ||
+      ch == '<' || ch == '=' || ch == '(' || ch == ')' ||
+      ch == '[' || ch == ']' || ch == '{' || ch == '}')
+      return (true);
+  return (false);
+}
+bool Operator(char ch){
+  if (ch == '+' || ch == '-' || ch == '*' ||
+      ch == '/' || ch == '>' || ch == '<' ||
+      ch == '=')
+      return (true);
+  return (false);
+}
+bool vIdentifier(char* str){
+  if (str[0] == '0' || str[0] == '1' || str[0] == '2' ||
+      str[0] == '3' || str[0] == '4' || str[0] == '5' ||
+      str[0] == '6' || str[0] == '7' || str[0] == '8' ||
+      str[0] == '9' || Delimiter(str[0]) == true)
+      return (false);
+  return (true);
+}
+bool sSymbol(char ch){
+  if (ch == '!' || ch == '@' || ch == '#' || ch == '$' ||
+      ch == '%' || ch == '^' || ch == '&' || ch == '*' ||
+      ch == '(' || ch == ')')
+      return (true);
+  return (false);
+}
+bool Keyword(char* str){
+    if (!strcmp(str, "(for") || !strcmp(str, "if") ||
+        !strcmp(str, "else") || !strcmp(str, "while") ||
+        !strcmp(str, "do") ||
+         !strcmp(str, "int") || !strcmp(str, "float")
+        || !strcmp(str, "switch"))
+        return (true);
+    return (false);
+}
+bool Integer(char* str){
+  int i, len = strlen(str);
+  if (len == 0)
+      return (false);
+  for (i = 0; i < len; i++) {
+      if (str[i] != '0' && str[i] != '1' && str[i] != '2'
+          && str[i] != '3' && str[i] != '4' && str[i] != '5'
+          && str[i] != '6' && str[i] != '7' && str[i] != '8'
+          && str[i] != '9' || (str[i] == '-' && i > 0))
+          return (false);
+  }
+  return (true);
+}
+bool rNumber(char* str){
+  int i, len = strlen(str);
+  bool hasDecimal = false;
+  if (len == 0)
+      return (false);
+  for (i = 0; i < len; i++) {
+      if (str[i] != '0' && str[i] != '1' && str[i] != '2'
+          && str[i] != '3' && str[i] != '4' && str[i] != '5'
+          && str[i] != '6' && str[i] != '7' && str[i] != '8'
+          && str[i] != '9' && str[i] != '.' ||
+          (str[i] == '-' && i > 0))
+          return (false);
+      if (str[i] == '.')
+          hasDecimal = true;
+  }
+  return (hasDecimal);
+}
+char* sString(char* str, int left, int right){
+    int i;
+    char* subStr = (char*)malloc(
+                  sizeof(char) * (right - left + 2));
+ 
+    for (i = left; i <= right; i++)
+        subStr[i - left] = str[i];
+    subStr[right - left + 1] = '\0';
+    return (subStr);
+}
+void parse(char* str){
+  int left = 0, right = 0;
+  int len = strlen(str);
+  while (right <= len && left <= right) {
+      if (Delimiter(str[right]) == false)
+          right++;
+      if (Delimiter(str[right]) == true && left == right) {
+          if (Operator(str[right]) == true)
+              printf("'%c' IS AN OPERATOR\n", str[right]);
+
+          right++;
+          left = right;
+      } 
+      else if (Delimiter(str[right]) == true && left != right || (right == len && left != right)) {
+        char* subStr = sString(str, left, right - 1);
+        if (Keyword(subStr) == true)
+        printf("'%s' IS A KEYWORD\n", subStr);
+        else if (Integer(subStr) == true)
+        printf("'%s' IS AN INTEGER\n", subStr);
+        else if (rNumber(subStr) == true)
+        printf("'%s' IS A REAL NUMBER\n", subStr);
+        else if (vIdentifier(subStr) == true && Delimiter(str[right - 1]) == false)
+        printf("'%s' IS A VALID IDENTIFIER\n", subStr);
+        else if (vIdentifier(subStr) == false && Delimiter(str[right - 1]) == false)
+        printf("'%s' IS NOT A VALID IDENTIFIER\n", subStr);
+        left = right;
+    }
+  }
+  return;
+}
+//void main statment
+void Main(){
+  ;
+}
+
+//if statment
+/*void ifstmt(void) {  if (nextToken != IF_CODE)    error();
+  else {    lex();
+    if (nextToken != LEFT_PAREN)      error();
+    else {      lex();
+      keyword();
+      if (nextToken != RIGHT_PAREN)        error();
+      else {        lex();
+        statement();
+        if (nextToken == ELSE_CODE) {          lex();
+          statement();
+        }
+      }
+    }
+  }
+}*/
+//<block> -->‘{‘ { <statement> ; } ‘}’
+/*
+void block(){
+  if nextToken != '{'
+    error
+  else
+    while{nextToken != '}{
+      statment();
+      if nextToken != ';'
+        error();
+        lex();
+    }
+    if nextToken != '{'
+    error();
+        lex();
+}
+*/
+
+int lex(void) {  lexLen = 0;
+  getNonBlank();
+  switch (charClass) {
+/* Identifiers */    case LETTER:      addChar();
+      getChar();
+      while (charClass == LETTER || charClass == DIGIT) {        addChar();
+        getChar();
+      }
+      nextToken = IDENT;
+      break;
+/* Integer literals */    case DIGIT:      addChar();
+      getChar();
+      while (charClass == DIGIT) {        addChar();
+        getChar();
+      }
+      nextToken = INT_LIT;
+      break;
+/* Parentheses and operators */    case UNKNOWN:      lookup(nextChar);
+      getChar();
+      break;
+/* EOF */    case EOF:      nextToken = EOF;
+      lexeme[0] = 'E';
+      lexeme[1] = 'O';
+      lexeme[2] = 'F';
+      lexeme[3] = '\0';
+      break;  }  /* End of switch */
+  printf("Next token is: %d, Next lexeme is %s\n",          nextToken, lexeme);
+  return nextToken;
+}
